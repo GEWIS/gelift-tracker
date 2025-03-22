@@ -2,10 +2,12 @@ import { MapContainer } from 'react-leaflet/MapContainer'
 import { TileLayer } from 'react-leaflet/TileLayer'
 import './App.css'
 import {useEffect, useState} from "react";
-import {Polyline} from "react-leaflet";
+import {CircleMarker, Polyline, Popup, Tooltip} from "react-leaflet";
+import uniqolor from "uniqolor";
 
 interface Datapoint {
     user: string;
+    teamName: string;
     latitude: number;
     longitude: number;
     battery: number;
@@ -17,13 +19,14 @@ function App() {
 
     const [groupedDatapoints, setGroupedDatapoints] = useState<Record<string, Datapoint[]>>({});
 
-    useEffect(() => {
+    function getTracks() {
         fetch("/api/tracks")
             .then(res => res.json())
             .then(data => {
                 setDatapoints(data.map((d: any) => {
                     return {
                         user: d.user,
+                        teamName: d.user,
                         latitude: d.latitude,
                         longitude: d.longitude,
                         battery: d.battery,
@@ -31,6 +34,14 @@ function App() {
                     }
                 }))
             })
+    }
+
+    useEffect(() => {
+        getTracks();
+
+        const interval = setInterval(getTracks, 10*1000);
+
+        return () => clearInterval(interval);
     }, [])
 
     useEffect(() => {
@@ -57,7 +68,27 @@ function App() {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <Polyline positions={groupedDatapoints[Object.keys(groupedDatapoints)[0]]?.map(d => [d.latitude, d.longitude]) || []} />
+                {
+                    Object.values(groupedDatapoints).map((p) => {
+                        const lastPos = p[p.length-1]
+                        const color = uniqolor(lastPos.user, { lightness: 45 }).color
+                        return <>
+                            <CircleMarker center={[lastPos.latitude, lastPos.longitude]} pathOptions={{ color }} radius={10}>
+                                <Popup>
+                                    <b>Last position details:</b> <br/>
+                                    Battery: { lastPos.battery } <br/>
+                                    Time: { lastPos.time.toLocaleString() }
+                                </Popup>
+                                <Tooltip direction="bottom" offset={[0, 10]} opacity={1} permanent>
+                                    { lastPos.user }
+                                </Tooltip>
+                            </CircleMarker>
+                            <Polyline
+                                pathOptions={{ color }}
+                                positions={p.map(d => [d.latitude, d.longitude])} />
+                        </>
+                    })
+                }
             </MapContainer>
         </>
     )
