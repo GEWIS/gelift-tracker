@@ -160,3 +160,5 @@ dist
 .idea
 
 *.sqlite
+
+configuration.yaml
