@@ -10,11 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.0.16",
+    "@turf/distance": "^7.2.0",
     "@types/leaflet": "^1.9.16",
     "leaflet": "^1.9.4",
+    "primereact": "^10.9.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-leaflet": "^5.0.0",
+    "tailwindcss": "^4.0.16",
     "uniqolor": "^1.1.1"
   },
   "devDependencies": {
