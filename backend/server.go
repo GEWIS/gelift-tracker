@@ -30,13 +30,14 @@ type MqttPayload struct {
 
 type LocationPoint struct {
 	gorm.Model
+	Team      string  `json:"team"`
 	User      string  `json:"user"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 	Battery   int     `json:"battery"`
 	Velocity  int     `json:"velocity"`
 	Timestamp int     `json:"timestamp"`
-	PacketID  uint16  `gorm:"unique" json:"pid"`
+	PacketID  uint16  `json:"pid"`
 }
 
 func connectMqtt(db *gorm.DB) {
@@ -84,7 +85,12 @@ func connectMqtt(db *gorm.DB) {
 					var payload MqttPayload
 					err = json.Unmarshal(pr.Packet.Payload, &payload)
 
+					if err != nil {
+						return false, err
+					}
+
 					if payload.Type != "location" {
+						fmt.Printf("Received packet of type %s, discarding...\n", payload.Type)
 						return true, nil
 					}
 
@@ -92,18 +98,20 @@ func connectMqtt(db *gorm.DB) {
 
 					// If this packet, or this timestamp - user combo is already logged, do not try again
 					amount := db.Where(
-						"packet_id = ? OR (timestamp = ? AND user = ?)",
-						pr.Packet.PacketID, payload.Timestamp, splittedTopic[1],
+						"timestamp = ? AND user = ?",
+						payload.Timestamp, splittedTopic[1],
 					).First(&LocationPoint{}).RowsAffected
 
 					if amount == 1 {
+						fmt.Printf("Duplicate packet received from %s / %s, discarding...\n", splittedTopic[1], splittedTopic[2])
 						return true, nil
 					}
 
 					fmt.Printf("Topic: %s; Lat: %g; Lon: %g; Batt: %d%% \n", pr.Packet.Topic, payload.Latitude, payload.Longitude, payload.Battery)
 
 					err := db.Create(&LocationPoint{
-						User:      splittedTopic[1],
+						Team:      splittedTopic[1],
+						User:      splittedTopic[2],
 						Latitude:  payload.Latitude,
 						Longitude: payload.Longitude,
 						Battery:   payload.Battery,
