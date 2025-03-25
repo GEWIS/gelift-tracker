@@ -100,7 +100,7 @@ function App() {
                             <div className={"ml-2"}>Individual view</div>
                         </div>
                     </Panel>
-                    <Panel header={"Stats"} className={"bg-white flex flex-col mx-1 z-500 bg rounded"} toggleable collapsed={true}>
+                    <Panel header={"Teams"} className={"bg-white flex flex-col mx-1 z-500 bg rounded"} toggleable collapsed={window.innerWidth < 500}>
                         <div className={"grid grid-cols-5 justify-items-start"}>
                             { Object.values(groupedDatapoints)
                                 .sort((a, b) => {
