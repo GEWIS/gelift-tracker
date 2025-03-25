@@ -7,6 +7,7 @@ import uniqolor from "uniqolor";
 import { Panel } from 'primereact/panel';
 import {InputSwitch} from "primereact/inputswitch";
 import distance from "@turf/distance"
+import {Checkbox} from "primereact/checkbox";
 
 interface Datapoint {
     team: string;
@@ -29,6 +30,8 @@ function App() {
     const [groupedDatapoints, setGroupedDatapoints] = useState<Record<string, Datapoint[]>>({});
 
     const [groupByTeam, setGroupByTeam] = useState<boolean>(true);
+
+    const [selectedEntities, setSelectedEntities] = useState<Record<string, boolean>>({});
 
     function getTracks() {
         fetch("/api/tracks")
@@ -69,14 +72,17 @@ function App() {
         }
 
         const _groupedDatapoints: Record<string, Datapoint[]> = {};
+        const _selectedEntities: Record<string, boolean> = {};
 
         for (const uniqueEntity of uniqueEntities) {
+            _selectedEntities[uniqueEntity] = true
             _groupedDatapoints[uniqueEntity] = datapoints.filter(d => {
                 return groupByTeam && d.team === uniqueEntity
                     || d.user === uniqueEntity
             });
         }
 
+        setSelectedEntities(_selectedEntities);
         setGroupedDatapoints(_groupedDatapoints);
     }, [datapoints, groupByTeam])
 
@@ -95,7 +101,7 @@ function App() {
                         </div>
                     </Panel>
                     <Panel header={"Stats"} className={"bg-white flex flex-col mx-1 z-500 bg rounded"} toggleable collapsed={true}>
-                        <div className={"grid grid-cols-2 justify-items-start"}>
+                        <div className={"grid grid-cols-5 justify-items-start"}>
                             { Object.values(groupedDatapoints)
                                 .sort((a, b) => {
                                     return a[a.length-1].distanceLeft - b[b.length-1].distanceLeft
@@ -105,10 +111,19 @@ function App() {
                                     const lastPos = p[p.length-1]
                                     const color = getColor(groupByTeam ? lastPos.team : lastPos.user)
                                     return <>
-                                        <div style={{ color }}>
+                                        <Checkbox
+                                            checked={selectedEntities[groupByTeam ? lastPos.team : lastPos.user]}
+                                            onChange={e => {
+                                                setSelectedEntities({
+                                                    ...selectedEntities,
+                                                    [groupByTeam ? lastPos.team : lastPos.user]: e.checked!,
+                                                })
+                                            }}
+                                        />
+                                        <div className={"col-span-2"} style={{ color }}>
                                             { groupByTeam ? lastPos.team : lastPos.user }
                                         </div>
-                                        <div>
+                                        <div className={"col-span-2"}>
                                             { Math.round(lastPos.distanceLeft) } km left
                                         </div>
                                     </>
@@ -127,8 +142,10 @@ function App() {
                     Object.values(groupedDatapoints).map((p) => {
                         p.sort((a, b) => a.time.getTime()-b.time.getTime())
                         const lastPos = p[p.length-1]
+                        if (!selectedEntities[groupByTeam ? lastPos.team : lastPos.user]) {
+                            return <></>
+                        }
                         const color = getColor(groupByTeam ? lastPos.team : lastPos.user)
-                        console.log(lastPos);
                         return <>
                             <CircleMarker center={[lastPos.latitude, lastPos.longitude]} pathOptions={{ color }} radius={10}>
                                 <Popup>
