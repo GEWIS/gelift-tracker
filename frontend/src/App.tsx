@@ -48,7 +48,7 @@ function App() {
                         longitude: d.longitude,
                         battery: d.battery,
                         time: new Date(d.timestamp*1000),
-                        distanceLeft: distance([d.longitude, d.latitude] /*, [5.4762087, 51.4435241] */ , [10.003503, 53.5655278] )
+                        distanceLeft: distance([d.longitude, d.latitude] /*, [5.4762087, 51.4435241] */ , [9.9099321, 53.5165228] )
                     }
                 }))
             })
