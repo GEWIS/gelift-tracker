@@ -75,7 +75,9 @@ function App() {
         const _selectedEntities: Record<string, boolean> = {};
 
         for (const uniqueEntity of uniqueEntities) {
-            _selectedEntities[uniqueEntity] = true
+            _selectedEntities[uniqueEntity] = selectedEntities[uniqueEntity] === undefined
+                ? true
+                : selectedEntities[uniqueEntity]
             _groupedDatapoints[uniqueEntity] = datapoints.filter(d => {
                 return groupByTeam && d.team === uniqueEntity
                     || d.user === uniqueEntity

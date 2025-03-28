@@ -8,9 +8,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://gelift.gewis.nl',
+        target: 'http://localhost:1323',
         changeOrigin: true,
-        rewrite: path => path.replace(/localhost:5173\/api/, 's://gelift.gewis.nl')
+        rewrite: path => path.replace(/\/api/, '')
       }
     }
   }
