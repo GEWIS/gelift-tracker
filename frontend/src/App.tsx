@@ -33,7 +33,9 @@ function App() {
 
     const [selectedEntities, setSelectedEntities] = useState<Record<string, boolean>>({});
 
-    function getTracks() {
+    const [teamMapping, setTeamMapping] = useState<Record<string, { name: string }>>({});
+
+    function fetchTracks() {
         fetch("/api/tracks")
             .then(res => res.json())
             .then(data => {
@@ -52,10 +54,24 @@ function App() {
             })
     }
 
-    useEffect(() => {
-        getTracks();
+    function fetchTeamMapping() {
+        fetch("/teams.json")
+            .then(res => res.json())
+            .then(data => {
+                setTeamMapping(data);
+            })
+    }
 
-        const interval = setInterval(getTracks, 10*1000);
+    function getTeamName(id: string) {
+        return teamMapping[id]?.name || id;
+    }
+
+    useEffect(() => {
+        fetchTracks();
+
+        fetchTeamMapping();
+
+        const interval = setInterval(fetchTracks, 10*1000);
 
         return () => clearInterval(interval);
     }, [])
@@ -122,8 +138,8 @@ function App() {
                                                 })
                                             }}
                                         />
-                                        <div className={"col-span-2"} style={{ color }}>
-                                            { groupByTeam ? lastPos.team : lastPos.user }
+                                        <div className={"col-span-2 text-start"} style={{ color }}>
+                                            { groupByTeam ? getTeamName(lastPos.team) : lastPos.user }
                                         </div>
                                         <div className={"col-span-2"}>
                                             { Math.round(lastPos.distanceLeft) } km left
@@ -157,7 +173,7 @@ function App() {
                                     Battery: { lastPos.battery } <br/>
                                 </Popup>
                                 <Tooltip direction="bottom" offset={[0, 10]} opacity={1} permanent>
-                                    { groupByTeam ? lastPos.team : lastPos.user }
+                                    { groupByTeam ? getTeamName(lastPos.team) : lastPos.user }
                                 </Tooltip>
                             </CircleMarker>
                             <Polyline
