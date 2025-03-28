@@ -8,6 +8,7 @@ import { Panel } from 'primereact/panel';
 import {InputSwitch} from "primereact/inputswitch";
 import distance from "@turf/distance"
 import {Checkbox} from "primereact/checkbox";
+import {Divider} from "primereact/divider";
 
 interface Datapoint {
     team: string;
@@ -22,6 +23,16 @@ interface Datapoint {
 
 function getColor(name: string) {
     return uniqolor(name, { lightness: [35, 50] }).color
+}
+
+function getDistanceOrTime(datapoints: Datapoint[]): string {
+    const datapointAtDest = datapoints.filter(d => d.distanceLeft < 0.5);
+
+    if (datapointAtDest.length === 0) {
+        return `${Math.round(datapoints[datapoints.length-1].distanceLeft)} km left`;
+    } else {
+        return `Arrived at ${datapointAtDest[0].time.toLocaleTimeString("nl-NL")}`;
+    }
 }
 
 function App() {
@@ -48,7 +59,7 @@ function App() {
                         longitude: d.longitude,
                         battery: d.battery,
                         time: new Date(d.timestamp*1000),
-                        distanceLeft: distance([d.longitude, d.latitude] /*, [5.4762087, 51.4435241] */ , [9.9099321, 53.5165228] )
+                        distanceLeft: distance([d.longitude, d.latitude] , [5.4848275, 51.4468853], /*[9.9099321, 53.5165228] */ )
                     }
                 }))
             })
@@ -124,7 +135,7 @@ function App() {
                                 .sort((a, b) => {
                                     return a[a.length-1].distanceLeft - b[b.length-1].distanceLeft
                                 })
-                                .map((p) => {
+                                .map((p, i) => {
                                     p.sort((a, b) => a.time.getTime()-b.time.getTime())
                                     const lastPos = p[p.length-1]
                                     const color = getColor(groupByTeam ? lastPos.team : lastPos.user)
@@ -142,8 +153,10 @@ function App() {
                                             { groupByTeam ? getTeamName(lastPos.team) : lastPos.user }
                                         </div>
                                         <div className={"col-span-2"}>
-                                            { Math.round(lastPos.distanceLeft) } km left
+                                            { getDistanceOrTime(p) }
                                         </div>
+                                        { i !== Object.values(groupedDatapoints).length-1
+                                            && <Divider className={"col-span-5 m-0"}/> }
                                     </>
                                 })
                             }
