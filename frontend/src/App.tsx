@@ -142,6 +142,9 @@ function App() {
                         <div className={"grid grid-cols-5 justify-items-start"}>
                             { Object.values(groupedDatapoints)
                                 .sort((a, b) => {
+                                    a.sort((c, d) => c.time.getTime()-d.time.getTime())
+                                    b.sort((e, f) => e.time.getTime()-f.time.getTime())
+
                                     const datapointAtDestA = a.filter(d => d.distanceLeft < 1);
                                     const datapointAtDestB = b.filter(d => d.distanceLeft < 1);
 
