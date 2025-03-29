@@ -26,7 +26,7 @@ function getColor(name: string) {
 }
 
 function getDistanceOrTime(datapoints: Datapoint[]): string {
-    const datapointAtDest = datapoints.filter(d => d.distanceLeft < 0.5);
+    const datapointAtDest = datapoints.filter(d => d.distanceLeft < 1);
 
     if (datapointAtDest.length === 0) {
         return `${Math.round(datapoints[datapoints.length-1].distanceLeft)} km left`;
@@ -133,7 +133,19 @@ function App() {
                         <div className={"grid grid-cols-5 justify-items-start"}>
                             { Object.values(groupedDatapoints)
                                 .sort((a, b) => {
-                                    return a[a.length-1].distanceLeft - b[b.length-1].distanceLeft
+                                    const datapointAtDestA = a.filter(d => d.distanceLeft < 1);
+                                    const datapointAtDestB = b.filter(d => d.distanceLeft < 1);
+
+                                    if (datapointAtDestB.length === 0 && datapointAtDestA.length === 0) {
+                                        return a[a.length-1].distanceLeft - b[b.length-1].distanceLeft
+                                    } else if (datapointAtDestA.length === 0 && datapointAtDestB.length > 0) {
+                                        return 1
+                                    } else if (datapointAtDestB.length === 0 && datapointAtDestA.length > 0) {
+                                        return -1
+                                    } else {
+                                        return datapointAtDestA[0].time.getTime() - datapointAtDestB[0].time.getTime();
+                                    }
+
                                 })
                                 .map((p, i) => {
                                     p.sort((a, b) => a.time.getTime()-b.time.getTime())
