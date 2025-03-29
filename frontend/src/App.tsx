@@ -46,6 +46,8 @@ function App() {
 
     const [teamMapping, setTeamMapping] = useState<Record<string, { name: string }>>({});
 
+    const [enableLabels, setEnableLabels] = useState<boolean>(true);
+
     function fetchTracks() {
         fetch("/api/tracks")
             .then(res => res.json())
@@ -121,12 +123,19 @@ function App() {
             <div className={"absolute flex flex-row justify-end w-full"}>
                 <div className={"flex flex-col w-2xs"}>
                     <Panel header={"Controls"} className={"bg-white flex flex-col m-1 z-500 bg rounded"} toggleable collapsed={true}>
-                        <div className={"flex flex-row"}>
+                        <div className={"flex flex-row mb-2"}>
                             <InputSwitch
                                 checked={!groupByTeam}
                                 onChange={(e) => setGroupByTeam(!e.value)}
                             />
                             <div className={"ml-2"}>Individual view</div>
+                        </div>
+                        <div className={"flex flex-row"}>
+                            <InputSwitch
+                                checked={!enableLabels}
+                                onChange={(e) => setEnableLabels(!e.value)}
+                            />
+                            <div className={"ml-2"}>Disable team labels</div>
                         </div>
                     </Panel>
                     <Panel header={"Teams"} className={"bg-white flex flex-col mx-1 z-500 bg rounded"} toggleable collapsed={window.innerWidth < 500}>
@@ -197,9 +206,12 @@ function App() {
                                     Reported by: { lastPos.user } <br/>
                                     Battery: { lastPos.battery } <br/>
                                 </Popup>
-                                <Tooltip direction="bottom" offset={[0, 10]} opacity={1} permanent>
-                                    { groupByTeam ? getTeamName(lastPos.team) : lastPos.user }
-                                </Tooltip>
+                                {
+                                    enableLabels &&
+                                    <Tooltip direction="bottom" offset={[0, 10]} opacity={1} permanent>
+                                        { groupByTeam ? getTeamName(lastPos.team) : lastPos.user }
+                                    </Tooltip>
+                                }
                             </CircleMarker>
                             <Polyline
                                 pathOptions={{ color }}
