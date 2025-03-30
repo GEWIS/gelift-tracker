@@ -21,10 +21,12 @@ interface Datapoint {
     distanceLeft: number;
 }
 
+// Get color deterministically determined by the name
 function getColor(name: string) {
     return uniqolor(name, { lightness: [35, 50] }).color
 }
 
+// The distance of the last position or the arrival time
 function getDistanceOrTime(datapoints: Datapoint[]): string {
     const datapointAtDest = datapoints.filter(d => d.distanceLeft < 1);
 
@@ -36,14 +38,17 @@ function getDistanceOrTime(datapoints: Datapoint[]): string {
 }
 
 function App() {
+    // All datapoints as received by the location API
     const [datapoints, setDatapoints] = useState<Datapoint[]>([]);
 
+    // Datapoints grouped by teams/users
     const [groupedDatapoints, setGroupedDatapoints] = useState<Record<string, Datapoint[]>>({});
 
     const [groupByTeam, setGroupByTeam] = useState<boolean>(true);
 
     const [selectedEntities, setSelectedEntities] = useState<Record<string, boolean>>({});
 
+    // Map teams to their actual name
     const [teamMapping, setTeamMapping] = useState<Record<string, { name: string }>>({});
 
     const [enableLabels, setEnableLabels] = useState<boolean>(true);
@@ -90,6 +95,7 @@ function App() {
     }, [])
 
     useEffect(() => {
+        // Set up a list of all unique teams/users available in the datapoints
         const uniqueEntities = new Set<string>();
 
         for (const point of datapoints) {
@@ -100,6 +106,7 @@ function App() {
             }
         }
 
+        // Group datapoints by each team/user
         const _groupedDatapoints: Record<string, Datapoint[]> = {};
         const _selectedEntities: Record<string, boolean> = {};
 
@@ -122,6 +129,7 @@ function App() {
             { /* Overlay */ }
             <div className={"absolute flex flex-row justify-end w-full"}>
                 <div className={"flex flex-col w-2xs"}>
+                    { /* Controls */ }
                     <Panel header={"Controls"} className={"bg-white flex flex-col m-1 z-500 bg rounded"} toggleable collapsed={true}>
                         <div className={"flex flex-row mb-2"}>
                             <InputSwitch
@@ -138,10 +146,13 @@ function App() {
                             <div className={"ml-2"}>Disable team labels</div>
                         </div>
                     </Panel>
+                    { /* List of teams */ }
                     <Panel header={"Teams"} className={"bg-white flex flex-col mx-1 z-500 bg rounded"} toggleable collapsed={window.innerWidth < 500}>
                         <div className={"grid grid-cols-5 justify-items-start"}>
                             { Object.values(groupedDatapoints)
+                                // Sort based on distance / time. Earliest time above, longest distance below.
                                 .sort((a, b) => {
+                                    // Sort point on times to make sure the last point in the array is the last known location
                                     a.sort((c, d) => c.time.getTime()-d.time.getTime())
                                     b.sort((e, f) => e.time.getTime()-f.time.getTime())
 
@@ -160,6 +171,7 @@ function App() {
 
                                 })
                                 .map((p, i) => {
+                                    // Sort point on times to make sure the last point in the array is the last known location
                                     p.sort((a, b) => a.time.getTime()-b.time.getTime())
                                     const lastPos = p[p.length-1]
                                     const color = getColor(groupByTeam ? lastPos.team : lastPos.user)
@@ -188,13 +200,16 @@ function App() {
                     </Panel>
                 </div>
             </div>
+            { /* Map */ }
             <MapContainer className={"map-container z-10"} center={[52.278,7.973]} zoom={8}>
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 {
+                    // Line and tooltip of each team/user
                     Object.values(groupedDatapoints).map((p) => {
+                        // Sort point on times to make sure the last point in the array is the last known location
                         p.sort((a, b) => a.time.getTime()-b.time.getTime())
                         const lastPos = p[p.length-1]
                         if (!selectedEntities[groupByTeam ? lastPos.team : lastPos.user]) {
