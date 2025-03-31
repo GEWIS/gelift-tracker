@@ -53,6 +53,7 @@ For the maps [Leaflet](https://react-leaflet.js.org/) +
 - Distance till destination and arrival time
 
 ### Future ideas
-- Clean up the code
+- Clean up the code (abstract, more components, linting)
 - Backoffice to create/update/delete teams and assign start times to the teams to be used by the GELIFT committee.
 - Timeline to scroll back in time
+- Add photos at locations for challenges and other things
