@@ -17,6 +17,9 @@
 # Dependency directories (remove the comment below to include it)
 vendor/
 
+# Kubeseal fetch (never commit cluster sealing cert)
+deploy/kustomize/cert.pem
+
 # Go workspace file
 go.work
 go.work.sum

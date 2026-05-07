@@ -1,8 +1,5 @@
-# MQTT credentials must exist before apply:
-#   kubectl -n gelift-tracker create secret generic gelift-tracker-secrets \
-#     --from-literal=MQTT_URL='mqtt://mosquitto.example.svc.cluster.local:1883' \
-#     --from-literal=MQTT_USERNAME='owntracks' \
-#     --from-literal=MQTT_PASSWORD='changeme'
+# Sensitive env (MQTT_URL, MQTT_USERNAME, MQTT_PASSWORD, optional DATABASE_URL) comes from
+# Secret gelift-tracker-secrets — use Sealed Secrets in deploy/kustomize (see secrets/README.md).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
