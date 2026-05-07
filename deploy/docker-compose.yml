@@ -1,0 +1,17 @@
+services:
+  gelift-tracker:
+    image: ghcr.io/gewis/gelift-tracker:latest
+    ports:
+      - "1323:1323"
+    environment:
+      MQTT_URL: mqtt://localhost:1883
+      MQTT_USERNAME: svc-gelift
+      MQTT_PASSWORD: changeme
+      DATABASE: /data/gelift.db
+      STATIC_DIR: /app/dist
+      PORT: "1323"
+    volumes:
+      - gelift-data:/data
+
+volumes:
+  gelift-data:
