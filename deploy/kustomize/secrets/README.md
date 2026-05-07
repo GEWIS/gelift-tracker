@@ -17,7 +17,7 @@ Templates and sealed secrets for Kubernetes overlays.
    # Edit gelift-tracker-secrets.k3s.yaml with real values
    ```
 
-3. Seal the secret (`namespace-wide` matches how SudoSOS seals backend env secrets):
+3. Seal the secret:
 
    ```bash
    kubeseal --cert ../cert.pem \

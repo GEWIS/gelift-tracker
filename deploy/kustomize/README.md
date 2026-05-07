@@ -26,6 +26,6 @@ Requires [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) instal
 
 ## Secrets
 
-MQTT credentials (and optional `DATABASE_URL`) live in a sealed secret checked in under `overlays/k3s/sealed-gelift-tracker-secrets.yaml`. To create or rotate secrets, follow **`secrets/README.md`** (same flow as SudoSOS: fetch cert from `sealed-secrets.gewis.nl`, edit template, `kubeseal`, commit sealed YAML).
+MQTT credentials (and optional `DATABASE_URL`) live in a sealed secret checked in under `overlays/k3s/sealed-gelift-tracker-secrets.yaml`. To create or rotate secrets, follow **`secrets/README.md`** (fetch cert from `sealed-secrets.gewis.nl`, edit template, `kubeseal`, commit sealed YAML).
 
 Non-sensitive environment (paths, ports) stays in **`base/deployment.yaml`**.
