@@ -30,5 +30,4 @@ ENV STATIC_DIR=/app/dist \
     PORT=1323
 EXPOSE 1323
 VOLUME ["/data"]
-USER nobody
 ENTRYPOINT ["/usr/local/bin/gelift-tracker"]
