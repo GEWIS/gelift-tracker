@@ -16,6 +16,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -205,14 +206,52 @@ func startHTTP(db *gorm.DB) {
 	e.Logger.Fatal(e.Start(listenAddr()))
 }
 
+func openGormDB() (*gorm.DB, error) {
+	cfg := &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	}
+
+	driver := strings.ToLower(strings.TrimSpace(os.Getenv("DATABASE_DRIVER")))
+	pgURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
+	sqlitePath := strings.TrimSpace(os.Getenv("DATABASE"))
+
+	switch driver {
+	case "", "auto":
+		if pgURL != "" {
+			driver = "postgres"
+		} else {
+			driver = "sqlite"
+		}
+	case "postgresql":
+		driver = "postgres"
+	}
+
+	switch driver {
+	case "postgres":
+		dsn := pgURL
+		if dsn == "" {
+			dsn = sqlitePath
+		}
+		if dsn == "" {
+			return nil, fmt.Errorf("postgres selected but DATABASE_URL and DATABASE are empty")
+		}
+		return gorm.Open(postgres.Open(dsn), cfg)
+	case "sqlite":
+		path := sqlitePath
+		if path == "" {
+			path = "gelift.db"
+		}
+		return gorm.Open(sqlite.Open(path), cfg)
+	default:
+		return nil, fmt.Errorf("unknown DATABASE_DRIVER %q (use sqlite, postgres, or auto)", driver)
+	}
+}
+
 func main() {
 	_ = godotenv.Load()
 
 	fmt.Println("Connecting to the database...")
-	db, err := gorm.Open(sqlite.Open(os.Getenv("DATABASE")), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-
+	db, err := openGormDB()
 	if err != nil {
 		panic(err)
 	}
