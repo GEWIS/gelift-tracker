@@ -1,0 +1,73 @@
+# MQTT credentials must exist before apply:
+#   kubectl -n gelift-tracker create secret generic gelift-tracker-secrets \
+#     --from-literal=MQTT_URL='mqtt://mosquitto.example.svc.cluster.local:1883' \
+#     --from-literal=MQTT_USERNAME='owntracks' \
+#     --from-literal=MQTT_PASSWORD='changeme'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gelift-tracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gelift-tracker
+  template:
+    metadata:
+      labels:
+        app: gelift-tracker
+    spec:
+      securityContext:
+        fsGroup: 65534
+      containers:
+        - name: gelift-tracker
+          image: gelift-tracker:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            readOnlyRootFilesystem: true
+          ports:
+            - name: http
+              containerPort: 1323
+          env:
+            - name: DATABASE
+              value: /data/gelift.db
+            - name: STATIC_DIR
+              value: /app/dist
+            - name: PORT
+              value: "1323"
+          envFrom:
+            - secretRef:
+                name: gelift-tracker-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: gelift-tracker-data
+        - name: tmp
+          emptyDir: {}

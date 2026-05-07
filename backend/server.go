@@ -4,19 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/eclipse/paho.golang/autopaho"
-	"github.com/eclipse/paho.golang/paho"
-	"github.com/joho/godotenv"
-	"github.com/labstack/echo/v4"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"github.com/eclipse/paho.golang/autopaho"
+	"github.com/eclipse/paho.golang/paho"
+	"github.com/joho/godotenv"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type MqttPayload struct {
@@ -150,31 +152,61 @@ func connectMqtt(db *gorm.DB) {
 	<-c.Done()
 }
 
+func listenAddr() string {
+	if v := os.Getenv("HTTP_LISTEN"); v != "" {
+		return v
+	}
+	if p := os.Getenv("PORT"); p != "" {
+		if strings.HasPrefix(p, ":") {
+			return p
+		}
+		return ":" + p
+	}
+	return ":1323"
+}
+
 func startHTTP(db *gorm.DB) {
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})
-	e.GET("/tracks", func(c echo.Context) error {
+
+	tracksHandler := func(c echo.Context) error {
 		var locations []LocationPoint
-
-		err := db.Find(&locations).Error
-
-		if err != nil {
-			panic(err)
+		if err := db.Find(&locations).Error; err != nil {
+			return err
 		}
-
 		return c.JSON(http.StatusOK, locations)
-	})
+	}
 
-	e.Logger.Fatal(e.Start(":1323"))
+	e.GET("/healthz", func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+	e.GET("/tracks", tracksHandler)
+	e.GET("/api/tracks", tracksHandler)
+
+	staticDir := os.Getenv("STATIC_DIR")
+	if staticDir == "" {
+		staticDir = "dist"
+	}
+	if st, err := os.Stat(staticDir); err == nil && st.IsDir() {
+		e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+			Root:   staticDir,
+			HTML5:  true,
+			Browse: false,
+			Skipper: func(c echo.Context) bool {
+				p := c.Request().URL.Path
+				return p == "/healthz" || p == "/tracks" || strings.HasPrefix(p, "/api/")
+			},
+		}))
+	} else {
+		e.GET("/", func(c echo.Context) error {
+			return c.String(http.StatusOK, "Hello, World!")
+		})
+	}
+
+	e.Logger.Fatal(e.Start(listenAddr()))
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		panic("Error loading .env file")
-	}
+	_ = godotenv.Load()
 
 	fmt.Println("Connecting to the database...")
 	db, err := gorm.Open(sqlite.Open(os.Getenv("DATABASE")), &gorm.Config{
