@@ -20,6 +20,9 @@ vendor/
 # Kubeseal fetch (never commit cluster sealing cert)
 deploy/kustomize/cert.pem
 
+# Kubeseal secrets pre-encrypt
+deploy/kustomize/secrets/gelift-tracker-secrets.k3s.yaml
+
 # Go workspace file
 go.work
 go.work.sum
