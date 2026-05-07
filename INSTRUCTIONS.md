@@ -38,4 +38,4 @@ We recommend setting the tracking mode to "significant" (which is default), from
 we measured between <1% and 8% battery usage between iPhones and android phones.
 
 ## 4. Stop sharing your location
-To stop sharing your location you can delete the app, or deny location permissions for this app in your phone settings.
+To stop sharing your location you can delete the app, deny location permissions for this app in your phone settings or set tracking mode to manual.
