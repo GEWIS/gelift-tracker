@@ -1,0 +1,10 @@
+[
+  {
+    "label": "Example contestant A",
+    "inline": "REPLACE_WITH_BASE64_OWTRACKS_CONFIG"
+  },
+  {
+    "label": "Example contestant B",
+    "inline": "REPLACE_WITH_BASE64_OWTRACKS_CONFIG"
+  }
+]

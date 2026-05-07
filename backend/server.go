@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 
@@ -21,6 +24,167 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
+
+const adminAuthCookie = "admin_auth"
+
+func adminPassword() string {
+	return strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
+}
+
+func isAdminDocumentPath(path string) bool {
+	if path == "/admin-login" || strings.HasPrefix(path, "/admin-login/") {
+		return false
+	}
+	return path == "/admin" || path == "/admin/" || strings.HasPrefix(path, "/admin/")
+}
+
+func cookieMatchesAdmin(c echo.Context, adminPass string) bool {
+	cookie, err := c.Cookie(adminAuthCookie)
+	if err != nil {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(adminPass)) == 1
+}
+
+const contestantAuthCookie = "contestant_auth"
+
+func contestantPassword() string {
+	return strings.TrimSpace(os.Getenv("CONTESTANT_PASSWORD"))
+}
+
+func isContestantDocumentPath(path string) bool {
+	if path == "/contestant-login" || strings.HasPrefix(path, "/contestant-login/") {
+		return false
+	}
+	return path == "/contestant" || path == "/contestant/" || strings.HasPrefix(path, "/contestant/")
+}
+
+func cookieMatchesContestant(c echo.Context, contestantPass string) bool {
+	cookie, err := c.Cookie(contestantAuthCookie)
+	if err != nil {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(contestantPass)) == 1
+}
+
+func contestantAuthorized(c echo.Context) bool {
+	pass := contestantPassword()
+	if pass == "" {
+		return true
+	}
+	return cookieMatchesContestant(c, pass)
+}
+
+func protectedDocumentGate() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if c.Request().Method != http.MethodGet {
+				return next(c)
+			}
+			path := c.Request().URL.Path
+			if isAdminDocumentPath(path) {
+				if ap := adminPassword(); ap != "" && !cookieMatchesAdmin(c, ap) {
+					return c.Redirect(http.StatusFound, "/admin-login")
+				}
+				return next(c)
+			}
+			if isContestantDocumentPath(path) {
+				if cp := contestantPassword(); cp != "" && !cookieMatchesContestant(c, cp) {
+					return c.Redirect(http.StatusFound, "/contestant-login")
+				}
+				return next(c)
+			}
+			return next(c)
+		}
+	}
+}
+
+type contestantLinkDTO struct {
+	Label  string `json:"label"`
+	Inline string `json:"inline"`
+}
+
+type contestantFileRow struct {
+	Label  string `json:"label"`
+	Name   string `json:"name"`
+	ID     string `json:"id"`
+	Inline string `json:"inline"`
+	Base64 string `json:"base64"`
+}
+
+func firstNonEmpty(ss ...string) string {
+	for _, s := range ss {
+		if strings.TrimSpace(s) != "" {
+			return strings.TrimSpace(s)
+		}
+	}
+	return ""
+}
+
+func contestantsJSONPath() string {
+	p := strings.TrimSpace(os.Getenv("CONTESTANTS_JSON_PATH"))
+	if p == "" {
+		return "/data/contestants.json"
+	}
+	return p
+}
+
+func parseContestantJSON(raw []byte) ([]contestantLinkDTO, error) {
+	raw = bytes.TrimPrefix(bytes.TrimSpace(raw), []byte("\xef\xbb\xbf"))
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("empty contestant config")
+	}
+	switch raw[0] {
+	case '[':
+		var rows []contestantFileRow
+		if err := json.Unmarshal(raw, &rows); err != nil {
+			return nil, err
+		}
+		out := make([]contestantLinkDTO, 0, len(rows))
+		for _, r := range rows {
+			label := firstNonEmpty(r.Label, r.Name, r.ID)
+			inline := firstNonEmpty(r.Inline, r.Base64)
+			if label == "" || inline == "" {
+				continue
+			}
+			out = append(out, contestantLinkDTO{Label: label, Inline: inline})
+		}
+		return out, nil
+	case '{':
+		var m map[string]string
+		if err := json.Unmarshal(raw, &m); err != nil {
+			return nil, err
+		}
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		out := make([]contestantLinkDTO, 0, len(keys))
+		for _, k := range keys {
+			out = append(out, contestantLinkDTO{Label: k, Inline: m[k]})
+		}
+		return out, nil
+	default:
+		return nil, fmt.Errorf("contestant config JSON must be an object or array")
+	}
+}
+
+func readContestantLinksForAPI() ([]contestantLinkDTO, string, error) {
+	path := contestantsJSONPath()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []contestantLinkDTO{}, fmt.Sprintf("Contestant config file not found (%s)", path), nil
+		}
+		return nil, "", err
+	}
+	rows, err := parseContestantJSON(raw)
+	if err != nil {
+		return nil, "", err
+	}
+	return rows, "", nil
+}
 
 type MqttPayload struct {
 	Type      string  `json:"_type"`
@@ -181,6 +345,104 @@ func startHTTP(db *gorm.DB) {
 	})
 	e.GET("/tracks", tracksHandler)
 	e.GET("/api/tracks", tracksHandler)
+
+	adminPass := adminPassword()
+	e.POST("/api/admin/login", func(c echo.Context) error {
+		if adminPass == "" {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "Admin login is not configured (set ADMIN_PASSWORD)",
+			})
+		}
+		var body struct {
+			Password string `json:"password"`
+		}
+		if err := c.Bind(&body); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if subtle.ConstantTimeCompare([]byte(strings.TrimSpace(body.Password)), []byte(adminPass)) != 1 {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "wrong password"})
+		}
+		c.SetCookie(&http.Cookie{
+			Name:     adminAuthCookie,
+			Value:    adminPass,
+			Path:     "/",
+			MaxAge:   60 * 60 * 24 * 7,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			Secure:   c.Scheme() == "https",
+		})
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+	})
+	e.GET("/api/admin/session", func(c echo.Context) error {
+		if adminPass == "" {
+			return c.JSON(http.StatusOK, map[string]bool{
+				"authenticated": true,
+				"configured":    false,
+			})
+		}
+		return c.JSON(http.StatusOK, map[string]bool{
+			"authenticated": cookieMatchesAdmin(c, adminPass),
+			"configured":    true,
+		})
+	})
+
+	contestantPass := contestantPassword()
+	e.POST("/api/contestant/login", func(c echo.Context) error {
+		if contestantPass == "" {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "Contestant login is not configured (set CONTESTANT_PASSWORD)",
+			})
+		}
+		var body struct {
+			Password string `json:"password"`
+		}
+		if err := c.Bind(&body); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if subtle.ConstantTimeCompare([]byte(strings.TrimSpace(body.Password)), []byte(contestantPass)) != 1 {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "wrong password"})
+		}
+		c.SetCookie(&http.Cookie{
+			Name:     contestantAuthCookie,
+			Value:    contestantPass,
+			Path:     "/",
+			MaxAge:   60 * 60 * 24 * 7,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			Secure:   c.Scheme() == "https",
+		})
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+	})
+	e.GET("/api/contestant/session", func(c echo.Context) error {
+		if contestantPass == "" {
+			return c.JSON(http.StatusOK, map[string]bool{
+				"authenticated": true,
+				"configured":    false,
+			})
+		}
+		return c.JSON(http.StatusOK, map[string]bool{
+			"authenticated": cookieMatchesContestant(c, contestantPass),
+			"configured":    true,
+		})
+	})
+	e.GET("/api/contestant/links", func(c echo.Context) error {
+		if !contestantAuthorized(c) {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		}
+		rows, warn, err := readContestantLinksForAPI()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to read contestant configuration"})
+		}
+		payload := map[string]interface{}{
+			"contestants": rows,
+		}
+		if warn != "" {
+			payload["error"] = warn
+		}
+		return c.JSON(http.StatusOK, payload)
+	})
+
+	e.Use(protectedDocumentGate())
 
 	staticDir := os.Getenv("STATIC_DIR")
 	if staticDir == "" {
