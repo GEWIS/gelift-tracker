@@ -24,8 +24,6 @@ spec:
             - name: http
               containerPort: 1323
           env:
-            - name: DATABASE
-              value: /data/gelift.db
             - name: STATIC_DIR
               value: /app/dist
             - name: PORT
