@@ -61,7 +61,7 @@ export function MapPage() {
                         longitude: d.longitude,
                         battery: d.battery,
                         time: new Date(d.timestamp*1000),
-                        distanceLeft: distance([d.longitude, d.latitude] , [5.4848275, 51.4468853], /*[9.9099321, 53.5165228] */ )
+                        distanceLeft: distance([d.longitude, d.latitude] , [6.703752, 52.2992009], /*[9.9099321, 53.5165228] */ )
                     }
                 }))
             })
