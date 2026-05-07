@@ -18,14 +18,8 @@ spec:
         fsGroup: 65534
       containers:
         - name: gelift-tracker
-          image: gelift-tracker:latest
+          image: ghcr.io/gewis/gelift-tracker:latest
           imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 65534
-            runAsGroup: 65534
-            readOnlyRootFilesystem: true
           ports:
             - name: http
               containerPort: 1323
