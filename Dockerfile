@@ -8,7 +8,7 @@ COPY frontend/ .
 RUN yarn build
 
 FROM golang:1.25-bookworm AS backend
-ENV GOFLAGS=-mod=mod
+ENV GOFLAGS="-mod=mod"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
