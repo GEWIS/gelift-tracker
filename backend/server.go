@@ -86,9 +86,7 @@ func connectMqtt(db *gorm.DB) {
 			OnPublishReceived: []func(paho.PublishReceived) (bool, error){
 				func(pr paho.PublishReceived) (bool, error) {
 					var payload MqttPayload
-					err = json.Unmarshal(pr.Packet.Payload, &payload)
-
-					if err != nil {
+					if err := json.Unmarshal(pr.Packet.Payload, &payload); err != nil {
 						return false, err
 					}
 
@@ -149,8 +147,9 @@ func connectMqtt(db *gorm.DB) {
 		panic(err)
 	}
 
-	fmt.Println("signal caught - exiting")
+	fmt.Println("mqtt client running (waiting until disconnect or shutdown signal)")
 	<-c.Done()
+	fmt.Println("mqtt client stopped")
 }
 
 func listenAddr() string {
