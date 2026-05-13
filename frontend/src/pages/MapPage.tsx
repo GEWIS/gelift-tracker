@@ -21,6 +21,18 @@ interface Datapoint {
     distanceLeft: number;
 }
 
+/** Fallback when `finish_latitude` / `finish_longitude` settings are not set (lon, lat for @turf/distance). */
+const DEFAULT_FINISH: { lng: number; lat: number } = { lng: 6.703752, lat: 52.2992009 }
+
+interface RawTrackRow {
+    team: string
+    user: string
+    latitude: number
+    longitude: number
+    battery: number
+    timestamp: number
+}
+
 function getColor(name: string) {
     return uniqolor(name, { lightness: [35, 50] }).color
 }
@@ -47,7 +59,9 @@ function formatDurationRemaining(remainingMs: number): string {
 }
 
 export function MapPage() {
-    const [datapoints, setDatapoints] = useState<Datapoint[]>([]);
+    const [rawTracks, setRawTracks] = useState<RawTrackRow[]>([])
+
+    const [finish, setFinish] = useState<{ lng: number; lat: number }>(DEFAULT_FINISH)
 
     const [groupedDatapoints, setGroupedDatapoints] = useState<Record<string, Datapoint[]>>({});
 
@@ -62,22 +76,37 @@ export function MapPage() {
     const [startAtMs, setStartAtMs] = useState<number | null>(null)
     const [countdownTick, setCountdownTick] = useState(0)
 
+    const datapoints = useMemo((): Datapoint[] => {
+        return rawTracks.map((d) => ({
+            team: d.team,
+            user: d.user,
+            teamName: d.user,
+            latitude: d.latitude,
+            longitude: d.longitude,
+            battery: d.battery,
+            time: new Date(d.timestamp * 1000),
+            distanceLeft: distance([d.longitude, d.latitude], [finish.lng, finish.lat], { units: 'kilometers' }),
+        }))
+    }, [rawTracks, finish])
+
     function fetchTracks() {
         fetch("/api/tracks")
             .then(res => res.json())
-            .then(data => {
-                setDatapoints(data.map((d: any) => {
-                    return {
+            .then((data: unknown) => {
+                if (!Array.isArray(data)) {
+                    setRawTracks([])
+                    return
+                }
+                setRawTracks(
+                    data.map((d: any) => ({
                         team: d.team,
                         user: d.user,
-                        teamName: d.user,
                         latitude: d.latitude,
                         longitude: d.longitude,
                         battery: d.battery,
-                        time: new Date(d.timestamp*1000),
-                        distanceLeft: distance([d.longitude, d.latitude] , [6.703752, 52.2992009], /*[9.9099321, 53.5165228] */ )
-                    }
-                }))
+                        timestamp: d.timestamp,
+                    })),
+                )
             })
     }
 
@@ -96,13 +125,27 @@ export function MapPage() {
     useEffect(() => {
         fetch('/api/event-window')
             .then(async (r) => {
-                const data = (await r.json().catch(() => ({}))) as { start_unix?: unknown }
+                const data = (await r.json().catch(() => ({}))) as {
+                    start_unix?: unknown
+                    finish_latitude?: unknown
+                    finish_longitude?: unknown
+                }
                 if (!r.ok) {
                     setStartAtMs(null)
                     return
                 }
                 const u = data.start_unix
                 setStartAtMs(typeof u === 'number' && Number.isFinite(u) ? u * 1000 : null)
+                const la = data.finish_latitude
+                const lo = data.finish_longitude
+                if (
+                    typeof la === 'number' &&
+                    typeof lo === 'number' &&
+                    Number.isFinite(la) &&
+                    Number.isFinite(lo)
+                ) {
+                    setFinish({ lat: la, lng: lo })
+                }
             })
             .catch(() => setStartAtMs(null))
 

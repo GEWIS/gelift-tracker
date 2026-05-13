@@ -2,6 +2,7 @@ package timewindow
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +15,9 @@ import (
 const (
 	StartKey = "start_time"
 	EndKey   = "end_time"
+	// FinishLatitudeKey / FinishLongitudeKey are WGS84 decimal degrees (e.g. 52.2992009, 6.703752).
+	FinishLatitudeKey  = "finish_latitude"
+	FinishLongitudeKey = "finish_longitude"
 	// SettingsTimezone is the wall-clock zone for date/time strings without an explicit offset.
 	SettingsTimezone = "Europe/Amsterdam"
 )
@@ -59,15 +63,21 @@ func LoadUnixInclusive(db *gorm.DB) (startSec, endSec int64, err error) {
 	return startSec, endSec, nil
 }
 
-// EventWindow carries resolved UTC Unix seconds for the map UI (same instants as /api/tracks).
+// EventWindow carries resolved values for the map UI (same time instants as /api/tracks, plus optional finish).
 type EventWindow struct {
-	StartUnix *int64 `json:"start_unix,omitempty"`
-	EndUnix   *int64 `json:"end_unix,omitempty"`
+	StartUnix       *int64   `json:"start_unix,omitempty"`
+	EndUnix         *int64   `json:"end_unix,omitempty"`
+	FinishLatitude  *float64 `json:"finish_latitude,omitempty"`
+	FinishLongitude *float64 `json:"finish_longitude,omitempty"`
 }
 
 // LoadEventWindow returns parsed bounds for JSON APIs; omits fields when unset.
 func LoadEventWindow(db *gorm.DB) (*EventWindow, error) {
 	start, end, err := LoadUnixInclusive(db)
+	if err != nil {
+		return nil, err
+	}
+	lat, lon, err := loadFinishCoordinates(db)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +90,52 @@ func LoadEventWindow(db *gorm.DB) (*EventWindow, error) {
 		e := end
 		out.EndUnix = &e
 	}
+	if lat != nil {
+		out.FinishLatitude = lat
+	}
+	if lon != nil {
+		out.FinishLongitude = lon
+	}
 	return out, nil
+}
+
+func loadFinishCoordinates(db *gorm.DB) (lat, lon *float64, err error) {
+	var rows []models.Setting
+	if err := db.Where("key IN ?", []string{FinishLatitudeKey, FinishLongitudeKey}).Find(&rows).Error; err != nil {
+		return nil, nil, err
+	}
+	val := func(key string) string {
+		for _, r := range rows {
+			if r.Key == key {
+				return r.Value
+			}
+		}
+		return ""
+	}
+	latStr := strings.TrimSpace(val(FinishLatitudeKey))
+	lonStr := strings.TrimSpace(val(FinishLongitudeKey))
+	if latStr == "" && lonStr == "" {
+		return nil, nil, nil
+	}
+	if latStr == "" || lonStr == "" {
+		return nil, nil, fmt.Errorf("settings %q and %q must both be set when using a finish point", FinishLatitudeKey, FinishLongitudeKey)
+	}
+	la, err := strconv.ParseFloat(latStr, 64)
+	if err != nil {
+		return nil, nil, fmt.Errorf("setting %q: %w", FinishLatitudeKey, err)
+	}
+	lo, err := strconv.ParseFloat(lonStr, 64)
+	if err != nil {
+		return nil, nil, fmt.Errorf("setting %q: %w", FinishLongitudeKey, err)
+	}
+	if la < -90 || la > 90 {
+		return nil, nil, fmt.Errorf("setting %q: latitude out of range [-90, 90]", FinishLatitudeKey)
+	}
+	if lo < -180 || lo > 180 {
+		return nil, nil, fmt.Errorf("setting %q: longitude out of range [-180, 180]", FinishLongitudeKey)
+	}
+	laCopy, loCopy := la, lo
+	return &laCopy, &loCopy, nil
 }
 
 func parseDateStringToUnix(s string) (int64, error) {
