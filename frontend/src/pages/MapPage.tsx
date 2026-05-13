@@ -283,7 +283,7 @@ export function MapPage() {
                     </Panel>
                 </div>
             </div>
-            <MapContainer className={"map-container z-10"} center={[52.278,7.973]} zoom={8}>
+            <MapContainer className={"map-container z-10"} center={[50.624,5.516]} zoom={7}>
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
