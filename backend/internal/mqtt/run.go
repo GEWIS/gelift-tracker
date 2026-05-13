@@ -48,7 +48,7 @@ func Run(db *gorm.DB) {
 		},
 		OnConnectError: func(err error) { fmt.Printf("error whilst attempting connection: %s\n", err) },
 		ClientConfig: paho.ClientConfig{
-			ClientID: "go-server",
+			ClientID: fmt.Sprintf("go-server-%d", os.Getpid()),
 			OnPublishReceived: []func(paho.PublishReceived) (bool, error){
 				locationHandler(db),
 			},
