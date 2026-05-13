@@ -28,6 +28,11 @@ func Run(db *gorm.DB) {
 		panic(err)
 	}
 
+	mqttClientID := os.Getenv("MQTT_CLIENT_ID")
+	if mqttClientID == "" {
+		mqttClientID = "go-server"
+	}
+
 	cliCfg := autopaho.ClientConfig{
 		ConnectUsername:               os.Getenv("MQTT_USERNAME"),
 		ConnectPassword:               []byte(os.Getenv("MQTT_PASSWORD")),
@@ -48,7 +53,7 @@ func Run(db *gorm.DB) {
 		},
 		OnConnectError: func(err error) { fmt.Printf("error whilst attempting connection: %s\n", err) },
 		ClientConfig: paho.ClientConfig{
-			ClientID: fmt.Sprintf("go-server-%d", os.Getpid()),
+			ClientID: mqttClientID,
 			OnPublishReceived: []func(paho.PublishReceived) (bool, error){
 				locationHandler(db),
 			},

@@ -28,6 +28,8 @@ spec:
               value: /app/dist
             - name: PORT
               value: "1323"
+            - name: MQTT_CLIENT_ID
+              value: "k3s-go-server"
           envFrom:
             - secretRef:
                 name: gelift-tracker-secrets
