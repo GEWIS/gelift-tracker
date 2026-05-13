@@ -39,15 +39,13 @@ func registerHealth(e *echo.Echo) {
 }
 
 func registerTracks(e *echo.Echo, db *gorm.DB) {
-	h := func(c echo.Context) error {
+	e.GET("/api/tracks", func(c echo.Context) error {
 		var locations []models.LocationPoint
 		if err := db.Find(&locations).Error; err != nil {
 			return err
 		}
 		return c.JSON(http.StatusOK, locations)
-	}
-	e.GET("/tracks", h)
-	e.GET("/api/tracks", h)
+	})
 }
 
 func registerAdminAuth(e *echo.Echo, adminPass string) {

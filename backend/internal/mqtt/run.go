@@ -95,10 +95,10 @@ func locationHandler(db *gorm.DB) func(paho.PublishReceived) (bool, error) {
 
 		amount := db.Where(
 			"timestamp = ? AND user = ?",
-			payload.Timestamp, parts[1],
+			payload.Timestamp, parts[2],
 		).First(&models.LocationPoint{}).RowsAffected
 
-		if amount == 1 {
+		if amount >= 1 {
 			fmt.Printf("Duplicate packet received from %s / %s, discarding...\n", parts[1], parts[2])
 			return true, nil
 		}
