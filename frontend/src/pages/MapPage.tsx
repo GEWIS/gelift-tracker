@@ -162,7 +162,7 @@ export function MapPage() {
         <>
             {beforeStart && startAtMs !== null && (
                 <div
-                    className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-4 bg-slate-900/90 text-white px-6 text-center"
+                    className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-4 bg-slate-900 text-white px-6 text-center"
                     role="status"
                     aria-live="polite"
                 >
