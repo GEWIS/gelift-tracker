@@ -54,6 +54,9 @@ func registerTracks(e *echo.Echo, db *gorm.DB) {
 		if endSec > 0 {
 			q = q.Where("timestamp <= ?", int(endSec))
 		}
+		if os.Getenv("DEBUG_MODE") != "true" {
+			q.Where("\"user\" <> 'victor'")
+		}
 		var locations []models.LocationPoint
 		if err := q.Find(&locations).Error; err != nil {
 			return err
