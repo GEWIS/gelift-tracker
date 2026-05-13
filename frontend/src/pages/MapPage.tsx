@@ -73,6 +73,8 @@ export function MapPage() {
 
     const [enableLabels, setEnableLabels] = useState<boolean>(true);
 
+    const [settings, setSettings] = useState<Record<string, string>>({});
+
     const [startAtMs, setStartAtMs] = useState<number | null>(null)
     const [countdownTick, setCountdownTick] = useState(0)
 
@@ -118,36 +120,24 @@ export function MapPage() {
             })
     }
 
+    function fetchSettings() {
+        fetch("/api/settings")
+            .then(res => res.json())
+            .then(data => {
+                let _settings: Record<string, string> = {}
+                for(let setting of data) {
+                    _settings[setting.key as string] = setting.value
+                }
+                setSettings(_settings);
+            })
+    }
+
     function getTeamName(id: string) {
         return teamMapping[id]?.name || id;
     }
 
     useEffect(() => {
-        fetch('/api/event-window')
-            .then(async (r) => {
-                const data = (await r.json().catch(() => ({}))) as {
-                    start_unix?: unknown
-                    finish_latitude?: unknown
-                    finish_longitude?: unknown
-                }
-                if (!r.ok) {
-                    setStartAtMs(null)
-                    return
-                }
-                const u = data.start_unix
-                setStartAtMs(typeof u === 'number' && Number.isFinite(u) ? u * 1000 : null)
-                const la = data.finish_latitude
-                const lo = data.finish_longitude
-                if (
-                    typeof la === 'number' &&
-                    typeof lo === 'number' &&
-                    Number.isFinite(la) &&
-                    Number.isFinite(lo)
-                ) {
-                    setFinish({ lat: la, lng: lo })
-                }
-            })
-            .catch(() => setStartAtMs(null))
+        fetchSettings();
 
         fetchTracks();
 
@@ -159,8 +149,21 @@ export function MapPage() {
     }, [])
 
     useEffect(() => {
+        if (settings['start_time']) {
+            setStartAtMs(Date.parse(settings['start_time']))
+        }
+
+        if (settings['finish_latitude'] && settings['finish_longitude']) {
+            setFinish({
+                lng: Number(settings['finish_longitude']),
+                lat: Number(settings['finish_latitude'])
+            });
+        }
+    }, [settings])
+
+    useEffect(() => {
         if (startAtMs === null) return undefined
-        const id = window.setInterval(() => setCountdownTick((n) => n + 1), 1000)
+        const id = setInterval(() => setCountdownTick((n) => n + 1), 1000)
         return () => clearInterval(id)
     }, [startAtMs])
 

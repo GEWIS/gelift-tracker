@@ -10,7 +10,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/contestants"
 	"backend/internal/models"
-	"backend/internal/timewindow"
+	"backend/internal/utils"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -43,7 +43,7 @@ func registerHealth(e *echo.Echo) {
 
 func registerTracks(e *echo.Echo, db *gorm.DB) {
 	e.GET("/api/tracks", func(c echo.Context) error {
-		startSec, endSec, err := timewindow.LoadUnixInclusive(db)
+		startSec, endSec, err := utils.LoadUnixInclusive(db)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 		}
@@ -62,14 +62,6 @@ func registerTracks(e *echo.Echo, db *gorm.DB) {
 			return err
 		}
 		return c.JSON(http.StatusOK, locations)
-	})
-
-	e.GET("/api/event-window", func(c echo.Context) error {
-		w, err := timewindow.LoadEventWindow(db)
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-		}
-		return c.JSON(http.StatusOK, w)
 	})
 }
 
