@@ -24,7 +24,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := db.AutoMigrate(&models.LocationPoint{}); err != nil {
+	if err := db.AutoMigrate(&models.LocationPoint{}, &models.Setting{}); err != nil {
 		panic(err)
 	}
 	fmt.Println("Connected to the database")

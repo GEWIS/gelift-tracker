@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"strings"
@@ -26,6 +27,7 @@ type Dependencies struct {
 func Register(e *echo.Echo, dep Dependencies) {
 	registerHealth(e)
 	registerTracks(e, dep.DB)
+	registerSettings(e, dep.DB, dep.Config.AdminPassword)
 	registerAdminAuth(e, dep.Config.AdminPassword)
 	registerContestantAuth(e, dep.Config, dep.Contestants)
 	e.Use(auth.DocumentGate(dep.Config.AdminPassword, dep.Config.ContestantPassword))
@@ -45,6 +47,75 @@ func registerTracks(e *echo.Echo, db *gorm.DB) {
 			return err
 		}
 		return c.JSON(http.StatusOK, locations)
+	})
+}
+
+// adminAuthorized matches DocumentGate: open when ADMIN_PASSWORD is unset; otherwise session cookie must match.
+func adminAuthorized(c echo.Context, adminPass string) bool {
+	if adminPass == "" {
+		return true
+	}
+	return auth.ConstantCookieMatches(c, auth.AdminCookieName, adminPass)
+}
+
+func registerSettings(e *echo.Echo, db *gorm.DB, adminPass string) {
+	e.GET("/api/settings", func(c echo.Context) error {
+		var rows []models.Setting
+		if err := db.Order("key asc").Find(&rows).Error; err != nil {
+			return err
+		}
+		out := make([]models.SettingEntry, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, models.SettingEntry{Key: r.Key, Value: r.Value})
+		}
+		return c.JSON(http.StatusOK, out)
+	})
+
+	e.PUT("/api/admin/settings", func(c echo.Context) error {
+		if !adminAuthorized(c, adminPass) {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		}
+		var body struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		}
+		if err := c.Bind(&body); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		key := strings.TrimSpace(body.Key)
+		if key == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "key is required"})
+		}
+		var row models.Setting
+		err := db.Where("key = ?", key).First(&row).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			row = models.Setting{Key: key, Value: body.Value}
+			if err := db.Create(&row).Error; err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		} else {
+			row.Value = body.Value
+			if err := db.Save(&row).Error; err != nil {
+				return err
+			}
+		}
+		return c.JSON(http.StatusOK, models.SettingEntry{Key: row.Key, Value: row.Value})
+	})
+
+	e.DELETE("/api/admin/settings/:key", func(c echo.Context) error {
+		if !adminAuthorized(c, adminPass) {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		}
+		key := strings.TrimSpace(c.Param("key"))
+		if key == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "key is required"})
+		}
+		if res := db.Where("key = ?", key).Delete(&models.Setting{}); res.Error != nil {
+			return res.Error
+		}
+		return c.NoContent(http.StatusNoContent)
 	})
 }
 
