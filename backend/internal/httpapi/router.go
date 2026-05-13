@@ -10,6 +10,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/contestants"
 	"backend/internal/models"
+	"backend/internal/timewindow"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -42,8 +43,19 @@ func registerHealth(e *echo.Echo) {
 
 func registerTracks(e *echo.Echo, db *gorm.DB) {
 	e.GET("/api/tracks", func(c echo.Context) error {
+		startSec, endSec, err := timewindow.LoadUnixInclusive(db)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+		q := db.Model(&models.LocationPoint{})
+		if startSec > 0 {
+			q = q.Where("timestamp >= ?", int(startSec))
+		}
+		if endSec > 0 {
+			q = q.Where("timestamp <= ?", int(endSec))
+		}
 		var locations []models.LocationPoint
-		if err := db.Find(&locations).Error; err != nil {
+		if err := q.Find(&locations).Error; err != nil {
 			return err
 		}
 		return c.JSON(http.StatusOK, locations)
