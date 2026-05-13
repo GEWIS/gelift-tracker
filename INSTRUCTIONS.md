@@ -12,8 +12,7 @@ and
 
 ## 2. Download and import your configuration
 
-Go to [https://gelift.gewis.nl/contestant](https://gelift.gewis.nl/configuration), login using: 
-Password: `REDACTED`
+Go to https://gelift.gewis.nl/contestant, login using the password: `REDACTED`
 
 Click on the configuration that is linked to your name. The Owntracks app should open and you can import the configuration.
 
