@@ -1,17 +1,20 @@
 services:
   gelift-tracker:
-    image: ghcr.io/gewis/gelift-tracker:latest
+    build: ..
     ports:
       - "1323:1323"
     environment:
-      MQTT_URL: mqtt://localhost:1883
-      MQTT_USERNAME: svc-gelift
-      MQTT_PASSWORD: changeme
-      DATABASE: /data/gelift.db
+      MQTT_URL: mqtts://gelift-tracker.gewis.nl:80
+      MQTT_USERNAME: victor
+      MQTT_PASSWORD: MDaFsKSmKxduDS8STHJLzg
+      DATABASE: /app/data/gelift.db
       STATIC_DIR: /app/dist
       PORT: "1323"
+      CONTESTANTS_JSON_PATH: /data/contestants.json
     volumes:
-      - gelift-data:/data
+      - ./data:/app/data:rw
+      # Optional: bind-mount Owntracks contestant configs (JSON). Create ./contestants.json next to this file.
+      # - ./contestants.json:/data/contestants.json:ro
 
 volumes:
   gelift-data:

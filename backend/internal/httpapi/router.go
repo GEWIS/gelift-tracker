@@ -60,6 +60,14 @@ func registerTracks(e *echo.Echo, db *gorm.DB) {
 		}
 		return c.JSON(http.StatusOK, locations)
 	})
+
+	e.GET("/api/event-window", func(c echo.Context) error {
+		w, err := timewindow.LoadEventWindow(db)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusOK, w)
+	})
 }
 
 // adminAuthorized matches DocumentGate: open when ADMIN_PASSWORD is unset; otherwise session cookie must match.

@@ -1,7 +1,7 @@
 import { MapContainer } from 'react-leaflet/MapContainer'
 import { TileLayer } from 'react-leaflet/TileLayer'
 import '../App.css'
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {CircleMarker, Polyline, Popup, Tooltip} from "react-leaflet";
 import uniqolor from "uniqolor";
 import { Panel } from 'primereact/panel';
@@ -35,6 +35,17 @@ function getDistanceOrTime(datapoints: Datapoint[]): string {
     }
 }
 
+function formatDurationRemaining(remainingMs: number): string {
+    if (remainingMs <= 0) return '0:00:00'
+    const totalSec = Math.ceil(remainingMs / 1000)
+    const days = Math.floor(totalSec / 86400)
+    const h = Math.floor((totalSec % 86400) / 3600)
+    const m = Math.floor((totalSec % 3600) / 60)
+    const s = totalSec % 60
+    const hm = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    return days > 0 ? `${days}d ${hm}` : hm
+}
+
 export function MapPage() {
     const [datapoints, setDatapoints] = useState<Datapoint[]>([]);
 
@@ -47,6 +58,9 @@ export function MapPage() {
     const [teamMapping, setTeamMapping] = useState<Record<string, { name: string }>>({});
 
     const [enableLabels, setEnableLabels] = useState<boolean>(true);
+
+    const [startAtMs, setStartAtMs] = useState<number | null>(null)
+    const [countdownTick, setCountdownTick] = useState(0)
 
     function fetchTracks() {
         fetch("/api/tracks")
@@ -80,6 +94,18 @@ export function MapPage() {
     }
 
     useEffect(() => {
+        fetch('/api/event-window')
+            .then(async (r) => {
+                const data = (await r.json().catch(() => ({}))) as { start_unix?: unknown }
+                if (!r.ok) {
+                    setStartAtMs(null)
+                    return
+                }
+                const u = data.start_unix
+                setStartAtMs(typeof u === 'number' && Number.isFinite(u) ? u * 1000 : null)
+            })
+            .catch(() => setStartAtMs(null))
+
         fetchTracks();
 
         fetchTeamMapping();
@@ -88,6 +114,21 @@ export function MapPage() {
 
         return () => clearInterval(interval);
     }, [])
+
+    useEffect(() => {
+        if (startAtMs === null) return undefined
+        const id = window.setInterval(() => setCountdownTick((n) => n + 1), 1000)
+        return () => clearInterval(id)
+    }, [startAtMs])
+
+    const beforeStart = useMemo(() => {
+        return startAtMs !== null && Date.now() < startAtMs
+    }, [startAtMs, countdownTick])
+
+    const remainingMs = useMemo(() => {
+        if (startAtMs === null) return 0
+        return Math.max(0, startAtMs - Date.now())
+    }, [startAtMs, countdownTick])
 
     useEffect(() => {
         const uniqueEntities = new Set<string>();
@@ -119,6 +160,18 @@ export function MapPage() {
 
     return (
         <>
+            {beforeStart && startAtMs !== null && (
+                <div
+                    className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-4 bg-slate-900/90 text-white px-6 text-center"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <p className="m-0 text-lg font-medium text-slate-200">GELIFT 2026 starts in</p>
+                    <p className="m-0 text-5xl font-semibold tabular-nums tracking-tight sm:text-6xl">
+                        {formatDurationRemaining(remainingMs)}
+                    </p>
+                </div>
+            )}
             <div className={"absolute flex flex-row justify-end w-full"}>
                 <div className={"flex flex-col w-2xs"}>
                     <Panel header={"Controls"} className={"bg-white flex flex-col m-1 z-500 bg rounded"} toggleable collapsed={true}>
