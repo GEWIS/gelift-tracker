@@ -289,7 +289,7 @@ export function MapPage() {
             <MapContainer className={"map-container z-10"} center={[50.624,5.516]} zoom={7}>
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=qhwIsthq0Hy5WSSM4PJJ"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 {
                     Object.values(groupedDatapoints).map((p) => {
