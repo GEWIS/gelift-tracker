@@ -34,7 +34,9 @@ the participant, the battery percentage, the time, but most importantly, the loc
 single HTTP endpoint for serving the tracks that are stored in the database. The endpoint is public, and it is 
 possible to create multiple frontends for displaying the tracks. 
 [GORM](https://gorm.io/), [Echo](https://echo.labstack.com/) and [Paho](https://github.com/eclipse-paho/paho.golang) 
-are used as libraries for the webserver, ORM, and MQTT client, respectively.
+are used as libraries for the ORM, webserver, and MQTT client, respectively.
+- **Backoffice**: The backoffice uses a very simple single password authentication, and allows very straightforward editing
+of settings. Or for easy importing of OTRC (owntrack configuration) files for participants. 
 - **Location visualizer**: The location visualizer is the React app that displays the tracks. It takes the tracks
 from the location API, groups this data by the user/team, sorts the data on timestamp, 
 and calculates properties like distance to the destination. It also contains some settings for customizing visualization.
@@ -43,6 +45,23 @@ For the maps [Leaflet](https://react-leaflet.js.org/) +
 [primereact](https://primereact.org/) + [tailwindcss](https://tailwindcss.com/) for components and styling.
 
 ### Changelogs
+
+#### Future ideas
+- Split the app into microservices, with a separate service for the MQTT server/client, the API, backoffice, and the frontend. 
+This allows for more stability, the frontend can then be redeployed during the weekend without downtime for the Location API.
+- Timeline to scroll back in time
+- Add photos at locations for challenges and other things
+- Backoffice for managing teams/participants
+- Generation of OTRC files, and MQTT credentials for teams/participants
+
+#### v2026
+- Dockerization of the components
+- Kubernetes deployment
+- Restructuring of the backend codebase
+- Admin backoffice for basic settings (start/end time, destination)
+- Participant backoffice for easy OTRC loading
+- Tried switching to maptiler, but ran into quota limits
+
 #### v2025
 - Initial release
 - Visualize current location and history
@@ -52,8 +71,3 @@ For the maps [Leaflet](https://react-leaflet.js.org/) +
 - Info on who published and when
 - Distance to destination and arrival time
 
-### Future ideas
-- Clean up the code (abstract, more components, linting)
-- Backoffice to create/update/delete teams and assign start times to the teams to be used by the GELIFT committee.
-- Timeline to scroll back in time
-- Add photos at locations for challenges and other things
