@@ -24,6 +24,9 @@ interface Datapoint {
 /** Fallback when `finish_latitude` / `finish_longitude` settings are not set (lon, lat for @turf/distance). */
 const DEFAULT_FINISH: { lng: number; lat: number } = { lng: 6.703752, lat: 52.2992009 }
 
+/** Fallback when the `contest_title` setting is not set. */
+const DEFAULT_CONTEST_TITLE = 'GELIFT'
+
 interface RawTrackRow {
     team: string
     user: string
@@ -161,6 +164,12 @@ export function MapPage() {
         }
     }, [settings])
 
+    const contestTitle = settings['contest_title'] || DEFAULT_CONTEST_TITLE
+
+    useEffect(() => {
+        document.title = contestTitle
+    }, [contestTitle])
+
     useEffect(() => {
         if (startAtMs === null) return undefined
         const id = setInterval(() => setCountdownTick((n) => n + 1), 1000)
@@ -212,7 +221,7 @@ export function MapPage() {
                     role="status"
                     aria-live="polite"
                 >
-                    <p className="m-0 text-lg font-medium text-slate-200">GELIFT 2026 starts in</p>
+                    <p className="m-0 text-lg font-medium text-slate-200">{contestTitle} starts in</p>
                     <p className="m-0 text-5xl font-semibold tabular-nums tracking-tight sm:text-6xl">
                         {formatDurationRemaining(remainingMs)}
                     </p>
